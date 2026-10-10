@@ -1,0 +1,62 @@
+#include 'tlpp-core.th'
+#include 'tlpp-rest.th'
+#include 'totvs.ch'
+
+Namespace test.custom.probat
+
+/*/{Protheus.doc} ProbatRestController
+    Endpoint REST responsavel por ler o arquivo JUnit (resultsprobat.xml)
+    do servidor e enviar diretamente para um Front-End.
+    @type class
+    @version 12.1.2510
+    @author Vitor M.
+    @since 10/10/2026
+/*/
+Class ProbatRestController
+    Public Method new() as object
+    
+    @Get("/api/v1/probat/results")
+    Public Method getResults()
+
+EndClass
+
+Method new() class ProbatRestController
+Return self
+
+/*/{Protheus.doc} ProbatRestController::getResults
+    Captura e devolve o conteudo XML puro.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 10/10/2026
+/*/    
+Method getResults() class ProbatRestController
+    Local cFile := "\system\resultsprobat.xml"
+    Local oFile := nil
+    Local cXmlStr := ""
+
+    If !File(cFile)
+        oRest:setStatusCode(404)
+        oRest:setResponse('{"error": "Arquivo resultsprobat.xml nao encontrado. O Probat ja foi executado?"}')
+        oRest:setKeyHeaderResponse('Content-Type', 'application/json')
+        Return .F.
+    EndIf
+
+    oFile := FWFileReader():New(cFile)
+    If !oFile:Open()
+        oRest:setStatusCode(500)
+        oRest:setResponse('{"error": "Falha de sistema operacional ao abrir o arquivo XML."}')
+        oRest:setKeyHeaderResponse('Content-Type', 'application/json')
+        Return .F.
+    EndIf
+
+    cXmlStr := oFile:FullRead()
+    oFile:Close()
+    FreeObj(oFile)
+
+    cXmlStr := DecodeUTF8(cXmlStr)
+
+    oRest:setStatusCode(200)
+    oRest:setResponse(cXmlStr)
+    oRest:setKeyHeaderResponse('Content-Type', 'application/xml; charset=utf-8')
+Return .T.
