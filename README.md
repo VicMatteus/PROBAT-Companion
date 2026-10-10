@@ -12,7 +12,7 @@
 ## 📸 Preview
 
 
-![PROBAT Companion Preview](./docs/preview.png)
+![PROBAT Companion Preview](./docs/image.png)
 
 *Interface moderna baseada no estilo da TOTVS com suporte a Light & Dark Mode nativo, métricas agregadas e inspeção detalhada de cada caso de teste.*
 
