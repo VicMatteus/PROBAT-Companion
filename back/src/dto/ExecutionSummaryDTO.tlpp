@@ -1,0 +1,185 @@
+#include 'tlpp-core.th'
+#include 'totvs.ch'
+
+Namespace custom.probat_companion.dto
+
+/*/{Protheus.doc} ExecutionSummaryDTO
+    Data Transfer Object que encapsula o resumo de uma execucao de testes PROBAT
+    e agrega a colecao de testes detalhados (relacao 1:N com TestDTO).
+    @type class
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+/*/
+Class ExecutionSummaryDTO
+    Public Data cCode    as character
+    Public Data cDate    as character
+    Public Data cTime    as character
+    Public Data cStart   as character
+    Public Data cEnd     as character
+    Public Data nTotal   as numeric
+    Public Data nPassed  as numeric
+    Public Data nSkipped as numeric
+    Public Data nFailed  as numeric
+    Public Data aTests   as array
+
+    Public Method new() as object
+    Public Method destroy()
+    Public Method addTest(oTest as object)
+    Public Method toJsonObject() as json
+    Public Method toJson() as character
+    Public Method fromJsonObject(jObj as json) as logical
+EndClass
+
+/*/{Protheus.doc} ExecutionSummaryDTO::new
+    Construtor padrao com inicializacao de valores e colecao de testes vazia.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @return object, instancia do objeto ExecutionSummaryDTO
+/*/
+Method new() as object class ExecutionSummaryDTO
+    ::cCode    := ""
+    ::cDate    := ""
+    ::cTime    := ""
+    ::cStart   := ""
+    ::cEnd     := ""
+    ::nTotal   := 0
+    ::nPassed  := 0
+    ::nSkipped := 0
+    ::nFailed  := 0
+    ::aTests   := {}
+Return self
+
+/*/{Protheus.doc} ExecutionSummaryDTO::destroy
+    Libera memoria dos objetos filhos agregados.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+/*/
+Method destroy() class ExecutionSummaryDTO
+    Local nI as numeric
+
+    For nI := 1 To Len(::aTests)
+        If ValType(::aTests[nI]) == "O"
+            FreeObj(::aTests[nI])
+        EndIf
+    Next nI
+
+    ::aTests := {}
+Return
+
+/*/{Protheus.doc} ExecutionSummaryDTO::addTest
+    Adiciona um TestDTO a colecao da execucao.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @param oTest, object, instancia de TestDTO a ser agregada
+/*/
+Method addTest(oTest as object) class ExecutionSummaryDTO
+    If ValType(oTest) == "O"
+        AAdd(::aTests, oTest)
+    EndIf
+Return
+
+/*/{Protheus.doc} ExecutionSummaryDTO::toJsonObject
+    Gera o contrato JSON raiz completo ({ "summary": { ... }, "tests": [ ... ] }).
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @return json, objeto JsonObject com formato pronto para consumo do Frontend
+/*/
+Method toJsonObject() as json class ExecutionSummaryDTO
+    Local jRoot      := JsonObject():new() as json
+    Local jSummary   := JsonObject():new() as json
+    Local aJsonTests := {} as array
+    Local nI         := 0 as numeric
+
+    jSummary['code']  := ::cCode
+    jSummary['date']  := ::cDate
+    jSummary['time']  := ::cTime
+    jSummary['start'] := ::cStart
+    jSummary['end']   := ::cEnd
+    jSummary['total'] := ::nTotal
+    jSummary['ok']    := ::nPassed
+    jSummary['skip']  := ::nSkipped
+    jSummary['error'] := ::nFailed
+
+    For nI := 1 To Len(::aTests)
+        If ValType(::aTests[nI]) == "O"
+            jTest := jsonObject():new()
+            jTest := ::aTests[nI]:toJsonObject()
+            
+            AAdd(aJsonTests, jTest)
+        EndIf
+    Next nI
+
+    jRoot['summary'] := jSummary
+    jRoot['summary']['aTests'] := aJsonTests
+    jRoot['tests']   := aJsonTests
+
+Return jRoot
+
+/*/{Protheus.doc} ExecutionSummaryDTO::toJson
+    Retorna a string JSON formatada de todo o lote.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @return character, string serializada em JSON
+/*/
+Method toJson() as character class ExecutionSummaryDTO
+    Local jRoot := ::toJsonObject() as json
+Return jRoot:toJson()
+
+/*/{Protheus.doc} ExecutionSummaryDTO::fromJsonObject
+    Desserializa o payload JSON montando a arvore de objetos ExecutionSummaryDTO + TestDTOs.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @param jObj, json, objeto JsonObject recebido
+    @return logical, .T. se desserializado com sucesso
+/*/
+Method fromJsonObject(jObj as json) as logical class ExecutionSummaryDTO
+    Local jSummary   as json
+    Local aRawTests  as array
+    Local oTest      as object
+    Local nI         as numeric
+
+    If ValType(jObj) != "J"
+        Return .F.
+    EndIf
+
+    // Popula bloco de resumo
+    If jObj:hasProperty('summary') .And. ValType(jObj['summary']) == "J"
+        jSummary := jObj['summary']
+        ::cCode    := IIf(jSummary:hasProperty('code'),  jSummary['code'],  "")
+        ::cDate    := IIf(jSummary:hasProperty('date'),  jSummary['date'],  "")
+        ::cTime    := IIf(jSummary:hasProperty('time'),  jSummary['time'],  "")
+        ::cStart   := IIf(jSummary:hasProperty('start'), jSummary['start'], "")
+        ::cEnd     := IIf(jSummary:hasProperty('end'),   jSummary['end'],   "")
+        ::nTotal   := IIf(jSummary:hasProperty('total'), Val(cValToChar(jSummary['total'])), 0)
+        ::nPassed  := IIf(jSummary:hasProperty('ok'),    Val(cValToChar(jSummary['ok'])),    0)
+        ::nSkipped := IIf(jSummary:hasProperty('skip'),  Val(cValToChar(jSummary['skip'])),  0)
+        ::nFailed  := IIf(jSummary:hasProperty('error'), Val(cValToChar(jSummary['error'])), 0)
+    EndIf
+
+    // Popula lista de testes filhos
+    If jObj:hasProperty('tests') .And. ValType(jObj['tests']) == "A"
+        aRawTests := jObj['tests']
+        ::aTests := {}
+        For nI := 1 To Len(aRawTests)
+            If ValType(aRawTests[nI]) == "J"
+                oTest := TestDTO():new()
+                oTest:fromJsonObject(aRawTests[nI])
+                AAdd(::aTests, oTest)
+            EndIf
+        Next nI
+    EndIf
+
+Return .T.

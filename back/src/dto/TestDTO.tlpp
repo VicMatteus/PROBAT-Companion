@@ -1,0 +1,141 @@
+#include 'tlpp-core.th'
+#include 'totvs.ch'
+
+Namespace custom.probat_companion.dto
+
+/*/{Protheus.doc} TestDTO
+    Data Transfer Object que representa o resultado detalhado de um caso de teste/assert do PROBAT.
+    Transporta dados do SQLite para consumo da API REST e Frontend.
+    @type class
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+/*/
+Class TestDTO
+    Public Data cCodeExec    as character
+    Public Data cCode        as character
+    Public Data cStatus      as character
+    Public Data cNameClass   as character
+    Public Data cNameMethod  as character
+    Public Data cSequence    as character
+    Public Data cFolder      as character
+    Public Data cSrcCall     as character
+    Public Data nLineCall    as numeric
+    Public Data cAssert      as character
+    Public Data cResult      as character
+    Public Data cExpected    as character
+    Public Data cDescription as character
+    Public Data cError       as character
+
+    Public Method new() as object
+    Public Method destroy()
+    Public Method toJsonObject() as json
+    Public Method toJson() as character
+    Public Method fromJsonObject(jObj as json) as logical
+EndClass
+
+/*/{Protheus.doc} TestDTO::new
+    Construtor padrao inicializando atributos com valores seguros.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @return object, instancia do objeto TestDTO
+/*/
+Method new() as object class TestDTO
+    ::cCodeExec    := ""
+    ::cCode        := ""
+    ::cStatus      := "SKIPPED"
+    ::cNameClass   := ""
+    ::cNameMethod  := ""
+    ::cSequence    := ""
+    ::cFolder      := ""
+    ::cSrcCall     := ""
+    ::nLineCall    := 0
+    ::cAssert      := ""
+    ::cResult      := ""
+    ::cExpected    := ""
+    ::cDescription := ""
+    ::cError       := ""
+Return self
+
+/*/{Protheus.doc} TestDTO::destroy
+    Libera recursos do objeto.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+/*/
+Method destroy() class TestDTO
+Return
+
+/*/{Protheus.doc} TestDTO::toJsonObject
+    Serializa o DTO em um JsonObject TLPP preservando a tipagem nativa.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @return json, objeto JsonObject preenchido
+/*/
+Method toJsonObject() as json class TestDTO
+    Local jTest := JsonObject():new() as json
+
+    jTest['CODE_EXEC']   := ::cCodeExec
+    jTest['CODE']        := ::cCode
+    jTest['STATUS']      := ::cStatus
+    jTest['NAMECLASS']   := ::cNameClass
+    jTest['NAMEMETHOD']  := ::cNameMethod
+    jTest['SEQUENCE']    := ::cSequence
+    jTest['FOLDER']      := ::cFolder
+    jTest['SRC_CALL']    := ::cSrcCall
+    jTest['LINE_CALL']   := ::nLineCall
+    jTest['ASSERT']      := ::cAssert
+    jTest['RESULT']      := ::cResult
+    jTest['EXPECTED']    := ::cExpected
+    jTest['DESCRIPTION'] := ::cDescription
+    jTest['ERROR']       := ::cError
+
+Return jTest
+
+/*/{Protheus.doc} TestDTO::toJson
+    Retorna a representacao em string JSON pronta para transmissao HTTP.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @return character, string serializada em JSON
+/*/
+Method toJson() as character class TestDTO
+    Local jObj := ::toJsonObject() as json
+Return jObj:toJson()
+
+/*/{Protheus.doc} TestDTO::fromJsonObject
+    Desserializa propriedades a partir de um JsonObject.
+    @type method
+    @version 12.1.2510
+    @author Vitor M.
+    @since 12/10/2026
+    @param jObj, json, objeto JsonObject de entrada
+    @return logical, .T. se populado com sucesso
+/*/
+Method fromJsonObject(jObj as json) as logical class TestDTO
+    If ValType(jObj) != "J"
+        Return .F.
+    EndIf
+
+    ::cCodeExec    := IIf(jObj:hasProperty('CODE_EXEC'),   jObj['CODE_EXEC'],   "")
+    ::cCode        := IIf(jObj:hasProperty('CODE'),        jObj['CODE'],        "")
+    ::cStatus      := IIf(jObj:hasProperty('STATUS'),      jObj['STATUS'],      "SKIPPED")
+    ::cNameClass   := IIf(jObj:hasProperty('NAMECLASS'),   jObj['NAMECLASS'],   "")
+    ::cNameMethod  := IIf(jObj:hasProperty('NAMEMETHOD'),  jObj['NAMEMETHOD'],  "")
+    ::cSequence    := IIf(jObj:hasProperty('SEQUENCE'),    jObj['SEQUENCE'],    "")
+    ::cFolder      := IIf(jObj:hasProperty('FOLDER'),      jObj['FOLDER'],      "")
+    ::cSrcCall     := IIf(jObj:hasProperty('SRC_CALL'),    jObj['SRC_CALL'],    "")
+    ::nLineCall    := IIf(jObj:hasProperty('LINE_CALL'),   jObj['LINE_CALL'],    0)
+    ::cAssert      := IIf(jObj:hasProperty('ASSERT'),      jObj['ASSERT'],      "")
+    ::cResult      := IIf(jObj:hasProperty('RESULT'),      jObj['RESULT'],      "")
+    ::cExpected    := IIf(jObj:hasProperty('EXPECTED'),    jObj['EXPECTED'],    "")
+    ::cDescription := IIf(jObj:hasProperty('DESCRIPTION'), jObj['DESCRIPTION'], "")
+    ::cError       := IIf(jObj:hasProperty('ERROR'),       jObj['ERROR'],       "")
+
+Return .T.
