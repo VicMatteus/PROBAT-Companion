@@ -1,0 +1,191 @@
+#include 'tlpp-core.th'
+#include 'totvs.ch'
+
+Static Function RealizarConsultasSQLite(cParam)
+    Local cDriver := "SQLITE_SYS" as character
+    Local cTabela := "PROBAT_TEST_EXECUTION" as character
+    Local cAlias  := GetNextAlias() as character
+    Local cText   as character
+
+    If ValType(cParam) == "C"
+        FWAlertInfo(cParam, "Teste")
+    EndIf
+    
+    DBUseArea(.T., cDriver, cTabela, cAlias, .T., .F.)
+    If Select(cAlias) > 0
+        (cAlias)->(DBGoTop())
+        
+        While !(cAlias)->(Eof())
+            cText += "Execução: " + (cAlias)->CODE_EXEC
+            
+            If ValType((cAlias)->DATE) != 'U'
+                cText += " | Data: " + (cAlias)->DATE
+            EndIf
+            
+            (cAlias)->(DBSkip())
+        EndDo
+        
+        (cAlias)->(DBCloseArea())
+    Else
+        cText := "Erro ao abrir a tabela SQLite do PROBAT."
+    EndIf
+
+    FWAlertInfo(cText, 'Consulta SQLite')
+Return
+
+Static Function LastExecutionQuery() as character
+    Local cQuery as character
+
+    cQuery += " SELECT  "
+    cQuery += "     e.CODE_EXEC, "
+    cQuery += "     e.DATE_EXEC, "
+    cQuery += "     e.TIME_EXEC, "
+    cQuery += "     e.START_EXEC, "
+    cQuery += "     e.END_EXEC, "
+    cQuery += "     r.TOTAL, "
+    cQuery += "     r.OK AS PASSED, "
+    cQuery += "     r.ERROR AS FAILED, "
+    cQuery += "     r.NOTEXECUTE AS SKIPPED, "
+    cQuery += "     r.WARNING, "
+    cQuery += "     srv.HOST_NAME, "
+    cQuery += "     srv.TLPPVRS "
+    cQuery += " FROM PROBAT_TEST_EXECUTION e "
+    cQuery += " INNER JOIN PROBAT_TEST_RESULTS r  "
+    cQuery += "     ON r.CODE_EXEC = e.CODE_EXEC  "
+    cQuery += "    AND r.D_E_L_E_T_ = ' ' "
+    cQuery += " LEFT JOIN PROBAT_TEST_INFO_SERVER srv  "
+    cQuery += "     ON srv.CODE_EXEC = e.CODE_EXEC  "
+    cQuery += "    AND srv.D_E_L_E_T_ = ' ' "
+    cQuery += " WHERE e.D_E_L_E_T_ = ' ' "
+    cQuery += " ORDER BY e.R_E_C_N_O_ DESC "
+    cQuery += " LIMIT 1; "
+    
+    cQuery := ChangeQuery(cQuery)
+Return cQuery 
+
+Static Function TestsInfoQuery(cCodeExec as character) as character
+    Local cQuery := "" as character
+
+    cQuery += " SELECT  "
+    cQuery += "     t.NAMECLASS, "
+    cQuery += "     t.NAMEMETHOD, "
+    cQuery += "     t.ROUTINE, "
+    cQuery += "     t.START_TEST, "
+    cQuery += "     t.END_TEST, "
+    cQuery += "     CASE  "
+    cQuery += "         WHEN t.OK = 1 THEN 'PASSED' "
+    cQuery += "         WHEN t.OK = 0 AND (t.ERROR IS NOT NULL OR t.RESULT <> t.EXPECTED) THEN 'FAILED' "
+    cQuery += "         ELSE 'SKIPPED' "
+    cQuery += "     END AS STATUS, "
+    cQuery += "     t.ASSERT, "
+    cQuery += "     TRIM(t.EXPECTED) AS EXPECTED, "
+    cQuery += "     TRIM(t.RESULT) AS RESULT, "
+    cQuery += "     t.FOLDER, "
+    cQuery += "     t.SEQUENCE, "
+    cQuery += "     t.SRC_CALL, "
+    cQuery += "     t.LINE_CALL, "
+    cQuery += "     t.DESCR, "
+    cQuery += "     t.ERROR, "
+    cQuery += "     r.CODE, "
+    cQuery += "     r.CODE_EXEC "
+    cQuery += " FROM PROBAT_TEST_TESTS t "
+    cQuery += " INNER JOIN PROBAT_TEST_RESULTS r  "
+    cQuery += "     ON r.CODE = t.CODE  "
+    cQuery += "    AND r.D_E_L_E_T_ = ' ' "
+    cQuery += " WHERE t.D_E_L_E_T_ = ' ' "
+    cQuery += "   AND r.CODE_EXEC = '" + cCodeExec + "' "
+    cQuery += " ORDER BY t.NAMECLASS, t.NAMEMETHOD "
+    
+    cQuery := ChangeQuery(cQuery)
+
+Return cQuery 
+
+Static Function GetLastExecutionSummary()
+    Local cDriver := "SQLITE_SYS" as character
+    Local jResponse := JsonObject():new()
+    Local cAlias := GetNextAlias() as character
+    Local cQuery := LastExecutionQuery() as character
+    
+    If DBSQLExec(cAlias, cQuery, cDriver)
+
+        If !(cAlias)->(EoF())
+            cLastExec := (cAlias)->CODE_EXEC        
+            
+            jResponse['code']  := AllTrim(cLastExec)
+            jResponse['date']  := (cAlias)->DATE_EXEC
+            jResponse['time']  := AllTrim((cAlias)->TIME_EXEC)
+            jResponse['start'] := AllTrim((cAlias)->START_EXEC)
+            jResponse['end']   := AllTrim((cAlias)->END_EXEC)
+            jResponse['total'] := (cAlias)->TOTAL
+            jResponse['ok']    := (cAlias)->PASSED
+            jResponse['skip']  := (cAlias)->SKIPPED
+            jResponse['error'] := (cAlias)->FAILED
+        
+            (cAlias)->(DBSkip())
+        Else
+            jResponse['message'] := "Nenhuma execução encontrada."
+        EndIf
+        
+        (cAlias)->(DBCloseArea())
+    Else
+        jResponse['message'] := "Erro ao abrir a tabela SQLite do PROBAT."
+    EndIf
+
+Return jResponse
+
+Static Function GetTestExecutionInfo(cCodeExec as character) as array
+    Default cCodeExec := "20261006000835515.5a"
+    Local cDriver := "SQLITE_SYS" as character
+    Local jTests  := JsonObject():new()
+    Local jTest   := JsonObject():new()
+    Local aTests  := {}
+    Local cAlias  := GetNextAlias() as character
+    Local cQuery  := TestsInfoQuery(cCodeExec) as character
+    
+    jTests["tests"] := {}
+
+    If DBSQLExec(cAlias, cQuery, cDriver)
+        While !(cAlias)->(EoF())
+            
+            jTest['CODE_EXEC']   := AllTrim((cAlias)->CODE_EXEC)
+            jTest['CODE']        := AllTrim((cAlias)->CODE)
+            jTest['STATUS']      := AllTrim((cAlias)->STATUS)
+            jTest['NAMECLASS']   := AllTrim((cAlias)->NAMECLASS)
+            jTest['NAMEMETHOD']  := AllTrim((cAlias)->NAMEMETHOD)
+            jTest['SEQUENCE']    := AllTrim((cAlias)->SEQUENCE)
+            jTest['FOLDER']      := AllTrim((cAlias)->FOLDER)
+            jTest['SRC_CALL']    := AllTrim((cAlias)->SRC_CALL)
+            jTest['LINE_CALL']   := AllTrim((cAlias)->LINE_CALL)
+            jTest['ASSERT']      := AllTrim((cAlias)->ASSERT)
+            jTest['RESULT']      := AllTrim((cAlias)->RESULT)
+            jTest['EXPECTED']    := AllTrim((cAlias)->EXPECTED)
+            jTest['DESCRIPTION'] := AllTrim((cAlias)->DESCR)
+            jTest['ERROR']       := AllTrim((cAlias)->ERROR)
+        
+            AAdd(aTests, jTest)
+            (cAlias)->(DBSkip())
+        EndDo
+
+        (cAlias)->(DBCloseArea())
+    Else
+        AAdd(aTests, jTests['message'] := "Erro ao abrir a tabela SQLite do PROBAT.")
+    EndIf
+
+Return aTests
+
+User Function GetFullTestData2()
+    Local jSummary  := JsonObject():new() as json
+    Local aTests    := {} as array
+    Local jResponse := JsonObject():new() as json
+
+    // tlpp.probat.run("type:namespace", "test.custom.wf.cobranca.service")
+    tlpp.probat.run("type:namespace", "custom.test.probat_companion.dto")
+
+    jSummary := GetLastExecutionSummary()
+    aTests   := GetTestExecutionInfo(jSummary['code'])
+
+    jResponse['summary'] := jSummary
+    jResponse['tests'] := aTests
+
+    FWAlertInfo(jResponse:toJson(), 'Consulta SQLite')
+Return
