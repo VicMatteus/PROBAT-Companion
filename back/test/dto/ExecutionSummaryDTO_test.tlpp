@@ -1,0 +1,119 @@
+#include "tlpp-core.th"
+#include 'totvs.ch'
+#include 'tlpp-probat.th'
+
+Namespace custom.test.probat_companion.dto
+Using Namespace custom.probat_companion.dto
+Using Namespace tlpp.probat
+
+@TestFixture(suite='companion_dto', owner='Vitor M.', runWithAll=.T.)
+Class ExecutionSummaryDTO_test
+    Public Method new() as object
+    Public Method destroy()
+    
+    // @Setup()
+    // Public Method setup()
+
+    // @OneTimeSetup()
+    // Public Method oneTimeSetup()
+  
+    @Test("Verifica se tipos e dados sao retornados corretamente apos serializacao.")
+    Public Method test_retorno_serializacao()
+
+    // @OneTimeTearDown()
+    // Public Method oneTimeTearDown()
+
+    // @TearDown()
+    // Public Method tearDown()
+
+EndClass
+
+Method new() as Object class ExecutionSummaryDTO_test
+    If Select("SM0") < 0
+        // RPCSetEnv(cEmp, cFil)
+    EndIF
+Return self
+
+Method destroy() class ExecutionSummaryDTO_test
+    If Select("SM0") > 0
+        RPCClearEnv()
+    EndIF
+Return
+
+Method test_retorno_serializacao() class ExecutionSummaryDTO_test
+    Local oSummary := ExecutionSummaryDTO():new()
+    Local oTest1 := TestDTO():new()
+    Local oTest2 := TestDTO():new()
+    Local oJson  := jsonObject():new()
+    Local cCodeExec    := "001" as character
+    Local cTestBattery := "030" as character
+    Local cSourceName := "classeTeste.tlpp" as character
+
+    //Arrange
+    oSummary:cCode    := cCodeExec
+    oSummary:cDate    := "01012027"
+    oSummary:cTime    := "00:18:33"
+    oSummary:cStart   := "1790911113.944970"
+    oSummary:cEnd     := "1790911121.046670"
+    oSummary:nTotal   := 2
+    oSummary:nPassed  := 1
+    oSummary:nSkipped := 1
+    oSummary:nFailed  := 1
+    oSummary:aTests   := {}
+    
+    oTest1:cCodeExec    := cCodeExec
+    oTest1:cCode        := cTestBattery
+    oTest1:cStatus      := "PASSED"
+    oTest1:cNameClass   := "classeTeste"
+    oTest1:cNameMethod  := "metodoTeste1"
+    oTest1:cSequence    := "1"
+    oTest1:cFolder      := "teste"
+    oTest1:cSrcCall     := cSourceName
+    oTest1:nLineCall    := 100
+    oTest1:cAssert      := "Equals"
+    oTest1:cResult      := "{N}-[12]"
+    oTest1:cExpected    := "{N}-[12]"
+    oTest1:cDescription := "O atraso calculado deve ser maior que zero."
+    oTest1:cError       := ""
+    
+    oTest2:cCodeExec    := cCodeExec
+    oTest2:cCode        := cTestBattery
+    oTest2:cStatus      := "FAILED"
+    oTest2:cNameClass   := "classeTeste"
+    oTest2:cNameMethod  := "metodoTeste1"
+    oTest2:cSequence    := "2"
+    oTest2:cFolder      := "teste"
+    oTest2:cSrcCall     := cSourceName
+    oTest2:nLineCall    := 130
+    oTest2:cAssert      := "Equals"
+    oTest2:cResult      := "{C}-[c]"
+    oTest2:cExpected    := "{C}-[TEMPLATE_AVISO_FINAL_NEGATIVACAO]"
+    oTest2:cDescription := "Teste"
+    oTest2:cError       := "different val: 'c' != 'TEMPLATE_AVISO_FINAL_NEGATIVACAO'"
+
+    oSummary:addTest(oTest1)
+    oSummary:addTest(oTest2)
+
+    // Act
+    oJson := oSummary:toJsonObject()
+
+    // Assert - valor, esperado, descrição
+    AssertEquals(oJson['summary']['code']               , cCodeExec           , "O codigo de execucao deve ser o mesmo apos a serializacao.")
+    AssertEquals(ValType(oJson['summary']['total'])     , "N"                 , "O tipo do campo total deve ser numerico.")
+    AssertEquals(oJson['summary']['total']              , Len(oSummary:aTests), "A quantidade total de testes do sumario deve ser igual a quantidade de testes.")
+    AssertEquals(oJson['summary']['aTests'][1]['STATUS'], "PASSED"            , "O status do teste deve ser PASSED.")
+    AssertEquals(oJson['summary']['aTests'][2]['STATUS'], "FAILED"            , "O status do teste deve ser FAILED.")
+
+    oSummary:destroy()
+
+    AssertEquals(Len(oSummary:aTests), 0, "Apos destruir o objeto de testes, ele deve ter arrays liberados.")
+Return .T.
+
+User function lixo()
+
+    // Local teste := ExecutionSummaryDTO_test():new()
+    // teste:test_retorno_serializacao()
+    // teste:destroy()
+
+    tlpp.probat.run('type:suite', 'companion_dto')
+return 
